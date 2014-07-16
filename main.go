@@ -2,17 +2,25 @@ package main
 
 import (
 	"net"
-	"github.com/lukeroberts1990/llog"
-	"time"
-	"fmt"
+	"github.com/awsmsrc/llog"
+	"encoding/xml"
+	"io"
 )
 
-func HeartBeat(conn net.Conn) {
+func Handle(conn net.Conn) {
 	defer conn.Close()
-	hb := time.Tick(time.Duration(1) * time.Second)
 	for {
-		<- hb
-		fmt.Fprint(conn, "Heartbeat\n")
+		decoder := xml.NewDecoder(conn)
+		t, err := decoder.Token() 
+		if err != nil {
+			if err == io.EOF {
+				llog.Success("Client quit")
+				return
+			}
+			llog.Error(err)
+		} else {
+			llog.Successf("%v", t)
+		}
 	}
 }
 
@@ -22,6 +30,6 @@ func main () {
 		llog.Info("Awaiting connection")
 		conn, _ := listener.Accept()
 		llog.Infof("Got connection from: %+v", conn)
-		go HeartBeat(conn)
+		go Handle(conn)
 	}
 }
